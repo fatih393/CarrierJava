@@ -3,6 +3,12 @@ package com.carrier.carrierapp.Infrastructure.Persistence.repositories;
 import com.carrier.carrierapp.application.repositories.IReadRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Repository;
 
 
 import java.util.List;
@@ -11,39 +17,37 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 
-public class ReadRepository<T> implements IReadRepository<T> {
-    @PersistenceContext
-    private EntityManager entityManager;
+@Transactional(readOnly = true)
+public abstract class ReadRepository<T, ID> implements IReadRepository<T, ID> {
 
-    private final Class<T> entityClass;
+    private final JpaRepository<T, ID> jpaRepository;
+    private final JpaSpecificationExecutor<T> specificationExecutor;
 
-    public ReadRepository(Class<T> entityClass) {
-        this.entityClass = entityClass;
+    public ReadRepository(EntityManager entityManager, Class<T> domainClass) {
+        this.jpaRepository = new SimpleJpaRepository<>(domainClass, entityManager);
+        this.specificationExecutor = new SimpleJpaRepository<>(domainClass, entityManager); // cast edilir
     }
 
     @Override
-    public List<T> getAll() {
-        String query = "SELECT e FROM " + entityClass.getSimpleName() + " e";
-        return entityManager.createQuery(query, entityClass).getResultList();
+    public Optional<T> findById(ID id) {
+        return jpaRepository.findById(id);
     }
 
     @Override
-    public List<T> getWhere(Predicate<T> predicate) {
-        return getAll().stream().filter(predicate).collect(Collectors.toList());
+    public List<T> findAll() {
+        return jpaRepository.findAll();
     }
 
-    @Override
-    public Optional<T> getSingle(Predicate<T> predicate) {
-        return getAll().stream().filter(predicate).findFirst();
+    // Specification kullanan versiyonlar
+    public List<T> findWhere(Specification<T> spec) {
+        return specificationExecutor.findAll(spec);
     }
 
-    @Override
-    public Optional<T> getById(int id) {
-        return Optional.ofNullable(entityManager.find(entityClass, id));
-    }
-
-    @Override
-    public Class<T> getEntityClass() {
-        return entityClass;
+    public Optional<T> findSingle(Specification<T> spec) {
+        return specificationExecutor.findOne(spec);
     }
 }
+
+
+
+

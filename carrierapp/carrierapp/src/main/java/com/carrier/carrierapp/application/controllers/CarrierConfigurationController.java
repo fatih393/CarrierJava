@@ -6,6 +6,15 @@ import com.carrier.carrierapp.Infrastructure.Persistence.repositories.carriercon
 import com.carrier.carrierapp.Infrastructure.Persistence.repositories.carrierconfiguration.CarrierConfigurationWriteRepository;
 import com.carrier.carrierapp.application.DTOs.CarrierConfiguration.PostCarrierConfigurationDto;
 import com.carrier.carrierapp.application.DTOs.CarrierConfiguration.PutCarrierConfigurationDto;
+import com.carrier.carrierapp.application.Features.Commands.CarrierConfiguration.CreateCarrierConfiguration.CreateCarrierConfigurationCommandRequest;
+import com.carrier.carrierapp.application.Features.Commands.CarrierConfiguration.CreateCarrierConfiguration.CreateCarrierConfigurationCommandResponse;
+import com.carrier.carrierapp.application.Features.Commands.CarrierConfiguration.DeleteCarrierConfiguration.DeleteCarrierConfigurationCommandRequest;
+import com.carrier.carrierapp.application.Features.Commands.CarrierConfiguration.DeleteCarrierConfiguration.DeleteCarrierConfigurationCommandResponse;
+import com.carrier.carrierapp.application.Features.Commands.CarrierConfiguration.UpdateCarrierConfiguration.UpdateCarrierConfigurationCommandRequest;
+import com.carrier.carrierapp.application.Features.Commands.CarrierConfiguration.UpdateCarrierConfiguration.UpdateCarrierConfigurationCommandResponse;
+import com.carrier.carrierapp.application.Features.Mediator.Mediator;
+import com.carrier.carrierapp.application.Features.Queries.CarrierConfiguration.GetCarrierConfiguration.GetCarrierConfigurationQueriesRequest;
+import com.carrier.carrierapp.application.Features.Queries.CarrierConfiguration.GetCarrierConfiguration.GetCarrierConfigurationQueriesResponse;
 import com.carrier.carrierapp.domain.entity.Carrier;
 import com.carrier.carrierapp.domain.entity.CarrierConfiguration;
 import org.springframework.http.HttpStatus;
@@ -19,83 +28,99 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/carrierconfigurations")
-public class CarrierConfigurationController  {
+public class CarrierConfigurationController {
+
     private final CarrierConfigurationReadRepository configurationReadRepository;
     private final CarrierConfigurationWriteRepository configurationWriteRepository;
-    private  final CarrierReadRepository carrierReadRepository;
+    private final CarrierReadRepository carrierReadRepository;
+    private final Mediator mediator;
 
-    public CarrierConfigurationController(CarrierConfigurationReadRepository configurationReadRepository, CarrierConfigurationWriteRepository configurationWriteRepository, CarrierReadRepository carrierReadRepository) {
+    public CarrierConfigurationController(CarrierConfigurationReadRepository configurationReadRepository,
+                                          CarrierConfigurationWriteRepository configurationWriteRepository,
+                                          CarrierReadRepository carrierReadRepository, Mediator mediator) {
         this.configurationReadRepository = configurationReadRepository;
         this.configurationWriteRepository = configurationWriteRepository;
         this.carrierReadRepository = carrierReadRepository;
+        this.mediator = mediator;
     }
 
     @PostMapping
-    public CompletableFuture<?> CrateConfiguration(@RequestBody PostCarrierConfigurationDto postCarrierConfigurationDto){
-        CarrierConfiguration configuration = new CarrierConfiguration();
-        configuration.setCarrierCost(postCarrierConfigurationDto.getCarrierCost());
-        configuration.setCarrierMaxDesi(postCarrierConfigurationDto.getCarrierMaxDesi());
-        configuration.setCarrierMinDesi(postCarrierConfigurationDto.getCarrierMinDesi());
+    public ResponseEntity<CreateCarrierConfigurationCommandResponse> createConfiguration(@RequestBody CreateCarrierConfigurationCommandRequest request) {
+     /*   Optional<Carrier> carrierOpt = carrierReadRepository.findById(dto.getCarrierId());
+        if (carrierOpt.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Carrier not found with id: " + dto.getCarrierId()));
+        }
 
-        Optional<Carrier> carrier = carrierReadRepository.getById(postCarrierConfigurationDto.getCarrierId());
-        Carrier carrierEntity = carrier.get();
-        configuration.setCarrier(carrierEntity);
+        CarrierConfiguration config = new CarrierConfiguration();
+        config.setCarrierCost(dto.getCarrierCost());
+        config.setCarrierMaxDesi(dto.getCarrierMaxDesi());
+        config.setCarrierMinDesi(dto.getCarrierMinDesi());
+        config.setCarrier(carrierOpt.get());
 
-        return configurationWriteRepository.addAsync(configuration)
-                .thenApply(success -> {
-                    if (success)
-                        return ResponseEntity.ok(Map.of("status", "success"));
-                    else
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-                });
+        CarrierConfiguration savedConfig = configurationWriteRepository.save(config);
+
+        if (savedConfig != null) {
+            return ResponseEntity.ok(Map.of("status", "success", "id", savedConfig.getId()));
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }*/
+        CreateCarrierConfigurationCommandResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public List<CarrierConfiguration> getallCarrierConfigurations(){
-        return configurationReadRepository.getAll();
+    public ResponseEntity<GetCarrierConfigurationQueriesResponse> getAllCarrierConfigurations(GetCarrierConfigurationQueriesRequest request) {
+        GetCarrierConfigurationQueriesResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteCarrierConfiguration(@PathVariable int id){
-        boolean deleted = configurationWriteRepository.removeById(id);
-        configurationWriteRepository.saveAsync();
-
-        if (deleted)
-            return ResponseEntity.ok("Carrier Configuration deleted successfully.");
-        else
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<DeleteCarrierConfigurationCommandResponse> deleteCarrierConfiguration(@RequestBody DeleteCarrierConfigurationCommandRequest request) {
+    /*    Optional<CarrierConfiguration> optionalConfig = configurationReadRepository.findById(id);
+        if (optionalConfig.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Carrier Configuration not found.");
+        }
+        configurationWriteRepository.deleteById(id);
+        return ResponseEntity.ok("Carrier Configuration deleted successfully.");*/
+        DeleteCarrierConfigurationCommandResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
     }
 
-@PutMapping
-    public ResponseEntity<String> updateCarrierConfiguration(@RequestBody PutCarrierConfigurationDto putCarrierConfigurationDto){
-    if (putCarrierConfigurationDto == null)
-        return ResponseEntity.badRequest().body("Invalid configuration data");
 
-    Optional<CarrierConfiguration> optionalConfiguration = configurationReadRepository.getById(putCarrierConfigurationDto.getId());
-    CarrierConfiguration configurationEntity = optionalConfiguration.get();
+    @PutMapping("/{id}")
+    public ResponseEntity<UpdateCarrierConfigurationCommandResponse> updateCarrierConfiguration(@RequestBody UpdateCarrierConfigurationCommandRequest request) {
+    /*    if (dto == null || dto.getId() != id) {
+            return ResponseEntity.badRequest().body("Invalid configuration data");
+        }
 
-    configurationEntity.setId(putCarrierConfigurationDto.getId());
-    configurationEntity.setCarrierCost(putCarrierConfigurationDto.getCarrierCost());
-    configurationEntity.setCarrierMinDesi(putCarrierConfigurationDto.getCarrierMinDesi());
-    configurationEntity.setCarrierMaxDesi(putCarrierConfigurationDto.getCarrierMaxDesi());
+        Optional<CarrierConfiguration> configOpt = configurationReadRepository.findById(id);
+        if (configOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Carrier Configuration not found with id: " + id);
+        }
 
-    Optional<Carrier> optionalCarrier = carrierReadRepository.getById(putCarrierConfigurationDto.getCarrierId());
-    Carrier carrierEntity = optionalCarrier.get();
+        Optional<Carrier> carrierOpt = carrierReadRepository.findById(dto.getCarrierId());
+        if (carrierOpt.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body("Carrier not found with id: " + dto.getCarrierId());
+        }
 
-    if (carrierEntity == null) {
-        throw new RuntimeException("Carrier not found with id: " + putCarrierConfigurationDto.getCarrierId());
+        CarrierConfiguration config = configOpt.get();
+        config.setCarrierCost(dto.getCarrierCost());
+        config.setCarrierMinDesi(dto.getCarrierMinDesi());
+        config.setCarrierMaxDesi(dto.getCarrierMaxDesi());
+        config.setCarrier(carrierOpt.get());
+
+        CarrierConfiguration saved = configurationWriteRepository.save(config);
+        if (saved != null) {
+            return ResponseEntity.ok("Carrier Configuration updated successfully.");
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to update Carrier Configuration.");
+        }*/
+        UpdateCarrierConfigurationCommandResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
     }
-    configurationEntity.setCarrier(carrierEntity);
-
-    boolean updated = configurationWriteRepository.update(configurationEntity);
-
-    if (updated)
-        return ResponseEntity.ok("Carrier Configuration updated successfully.");
-    else
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Failed to update Carrier Configuration.");
-
-
-    }
-
 }
+

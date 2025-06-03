@@ -2,6 +2,9 @@ package com.carrier.carrierapp.domain.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,6 +17,8 @@ public class Carrier extends BaseEntity {
     private boolean carriersActive;
 
     private int carrierPlusDesiCost;
+
+
 
 
     @OneToMany(mappedBy = "carrier", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
@@ -45,8 +50,14 @@ public class Carrier extends BaseEntity {
         return carrierName;
     }
 
-    public Carrier() {
+    public Carrier() {}
+
+    public Carrier(String carrierName, int carrierPlusDesiCost, boolean carriersActive) {
+        this.carrierName = carrierName;
+        this.carrierPlusDesiCost = carrierPlusDesiCost;
+        this.carriersActive = carriersActive;
     }
+
 
     public void setCarrierName(String carrierName) {
         this.carrierName = carrierName;

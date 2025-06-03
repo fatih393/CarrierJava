@@ -5,6 +5,15 @@ import com.carrier.carrierapp.Infrastructure.Persistence.repositories.order.Orde
 import com.carrier.carrierapp.Infrastructure.Persistence.repositories.order.OrderWriteRepository;
 import com.carrier.carrierapp.application.DTOs.Orders.PostOrderDto;
 import com.carrier.carrierapp.application.DTOs.Orders.PutOrderDto;
+import com.carrier.carrierapp.application.Features.Commands.Order.CreateOrder.CreateOrderCommandRequest;
+import com.carrier.carrierapp.application.Features.Commands.Order.CreateOrder.CreateOrderCommandResponse;
+import com.carrier.carrierapp.application.Features.Commands.Order.DeleteOrder.DeleteOrderCommandRequest;
+import com.carrier.carrierapp.application.Features.Commands.Order.DeleteOrder.DeleteOrderCommandResponse;
+import com.carrier.carrierapp.application.Features.Commands.Order.UpdateOrder.UpdateOrderCommandRequest;
+import com.carrier.carrierapp.application.Features.Commands.Order.UpdateOrder.UpdateOrderCommandResponse;
+import com.carrier.carrierapp.application.Features.Mediator.Mediator;
+import com.carrier.carrierapp.application.Features.Queries.Order.GetOrder.GetOrderQueriesRequest;
+import com.carrier.carrierapp.application.Features.Queries.Order.GetOrder.GetOrderQueriesResponse;
 import com.carrier.carrierapp.domain.entity.Carrier;
 import com.carrier.carrierapp.domain.entity.Order;
 import jakarta.persistence.EntityManager;
@@ -20,81 +29,95 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
+
     private final OrderReadRepository orderReadRepository;
     private final OrderWriteRepository orderWriteRepository;
-private  final EntityManager entityManager;
-    public OrderController(OrderReadRepository orderReadRepository, OrderWriteRepository orderWriteRepository, EntityManager entityManager) {
+    private final EntityManager entityManager;
+    private final Mediator mediator;
+
+    public OrderController(OrderReadRepository orderReadRepository,
+                           OrderWriteRepository orderWriteRepository,
+                           EntityManager entityManager, Mediator mediator) {
         this.orderReadRepository = orderReadRepository;
         this.orderWriteRepository = orderWriteRepository;
         this.entityManager = entityManager;
+        this.mediator = mediator;
     }
 
     @PostMapping
-    public CompletableFuture<ResponseEntity<Order>> CreateOrder(@RequestBody PostOrderDto postOrderDto){
-        Order order = new Order();
+    public ResponseEntity<CreateOrderCommandResponse> createOrder(@RequestBody CreateOrderCommandRequest request) {
+      /*  Order order = new Order();
         order.setOrderDesi(postOrderDto.getOrderDesi());
         order.setOrderDate(new Date());
         order.setOrderCarrierCost(postOrderDto.getOrderCarrierCost());
 
         Carrier carrier = entityManager.find(Carrier.class, postOrderDto.getCarrierId());
         if (carrier == null) {
-            throw new RuntimeException("Carrier not found with id: " + postOrderDto.getCarrierId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(null);
         }
         order.setCarrier(carrier);
 
-
-        return orderWriteRepository.addAsync(order)
-                .thenApply(success -> {
-                    if (success)
-                        return ResponseEntity.ok(order);
-                    else
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-                });
+        Order savedOrder = orderWriteRepository.save(order);
+        if (savedOrder != null) {
+            return ResponseEntity.ok(savedOrder);
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }*/
+        CreateOrderCommandResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public List<Order> getallOrders(){
-        return orderReadRepository.getAll();
+    public ResponseEntity<GetOrderQueriesResponse> getAllOrders(GetOrderQueriesRequest request) {
+        GetOrderQueriesResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
-    public  ResponseEntity<?> deleteOrder(@PathVariable int id){
-        boolean deleted = orderWriteRepository.removeById(id);
-        orderWriteRepository.saveAsync();
-
-        if (deleted)
-            return ResponseEntity.ok("Order deleted successfully.");
-        else
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<DeleteOrderCommandResponse> deleteOrder(@RequestBody DeleteOrderCommandRequest request) {
+      /*  boolean exists = orderReadRepository.findById(id).isPresent();
+        if (!exists) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Order not found.");
+        }
+        orderWriteRepository.deleteById(id);
+        return ResponseEntity.ok("Order deleted successfully.");*/
+        DeleteOrderCommandResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
 
     }
-    @PutMapping
-    public ResponseEntity<String> updateOrder(@RequestBody PutOrderDto putOrderDto){
-        if (putOrderDto == null)
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UpdateOrderCommandResponse> updateOrder(@RequestBody UpdateOrderCommandRequest request) {
+      /*  if (putOrderDto == null || putOrderDto.getId() != id) {
             return ResponseEntity.badRequest().body("Invalid order data");
+        }
 
-        Optional<Order> optionalOrder = orderReadRepository.getById(putOrderDto.getId());
+        Optional<Order> optionalOrder = orderReadRepository.findById(id);
+        if (optionalOrder.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Order not found.");
+        }
+
         Order orderEntity = optionalOrder.get();
-
-        orderEntity.setId(putOrderDto.getId());
         orderEntity.setOrderDesi(putOrderDto.getOrderDesi());
-        orderEntity.setOrderDate(orderEntity.getOrderDate());
+        // Tarihi genellikle güncelleme yapılmaz, eğer gerekiyorsa:
+        // orderEntity.setOrderDate(putOrderDto.getOrderDate());
         orderEntity.setOrderCarrierCost(putOrderDto.getOrderCarrierCost());
 
         Carrier carrier = entityManager.find(Carrier.class, putOrderDto.getCarrierId());
         if (carrier == null) {
-            throw new RuntimeException("Carrier not found with id: " + putOrderDto.getCarrierId());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Carrier not found.");
         }
         orderEntity.setCarrier(carrier);
 
-        boolean updated = orderWriteRepository.update(orderEntity);
-        if (updated)
+        Order updatedOrder = orderWriteRepository.save(orderEntity);
+        if (updatedOrder != null) {
             return ResponseEntity.ok("Order updated successfully.");
-         else
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to update order.");
-
-
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update order.");
+        }*/
+        UpdateOrderCommandResponse response = mediator.send(request);
+        return ResponseEntity.ok(response);
     }
-
 }
+

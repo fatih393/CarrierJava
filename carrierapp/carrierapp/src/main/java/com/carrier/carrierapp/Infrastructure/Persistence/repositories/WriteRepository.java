@@ -5,69 +5,40 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 
 @Transactional
-public class WriteRepository<T> implements IWriteRepository<T> {
+public abstract class WriteRepository<T, ID> implements IWriteRepository<T, ID> {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final JpaRepository<T, ID> jpaRepository;
+    private final EntityManager entityManager;
 
-    private Class<T> entityClass;
-    @Override
-    public Class<T> getEntityClass() {
-        return entityClass;
+    public WriteRepository(EntityManager entityManager, Class<T> domainClass) {
+        this.entityManager = entityManager;
+        this.jpaRepository = new SimpleJpaRepository<>(domainClass, entityManager);
     }
-
-    public WriteRepository(Class<T> entityClass) {
-        this.entityClass = entityClass;
-    }
-
-    @Autowired
-    private TransactionTemplate transactionTemplate;
 
     @Override
-    public CompletableFuture<Boolean> addAsync(T model) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return transactionTemplate.execute(status -> {
-                    entityManager.persist(model);
-                    return true;
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        });
+    public T save(T entity) {
+        return jpaRepository.save(entity);
     }
-
 
     @Override
-    public CompletableFuture<Boolean> addRangeAsync(List<T> datas) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                for (T data : datas) {
-                    entityManager.persist(data);
-                }
-                return true;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        });
+    public void delete(T entity) {
+        jpaRepository.delete(entity);
     }
-
-    @Transactional
-    public boolean remove(T model) {
+    public boolean update(T entity) {
         try {
-            entityManager.remove(entityManager.contains(model) ? model : entityManager.merge(model));
-            entityManager.flush();
+            jpaRepository.save(entity);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -76,52 +47,15 @@ public class WriteRepository<T> implements IWriteRepository<T> {
     }
 
 
-    @Transactional
-    public boolean removeById(int id) {
-        T entity = entityManager.find(entityClass, id);
-        if (entity != null) {
-            return remove(entity);
+    @Override
+    public boolean deleteById(ID id) {
+        if (jpaRepository.existsById(id)) {
+            jpaRepository.deleteById(id);
+            return true;
         }
         return false;
     }
-
-
-
-    @Override
-    public boolean removeRange(List<T> datas) {
-        try {
-            for (T data : datas) {
-                remove(data);
-            }
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    @Transactional
-    @Override
-    public boolean update(T model) {
-        try {
-            entityManager.merge(model);
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    @Override
-    public CompletableFuture<Integer> saveAsync() {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                entityManager.flush();
-                return 1;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return 0;
-            }
-        });
-    }
 }
+
+
+

@@ -7,6 +7,7 @@ public class PutCarrierDto extends BaseEntity {
     private String carrierName;
 
     private boolean carriersActive;
+    private int carrierPlusDesiCost;
 
     public String getCarrierName() {
         return carrierName;
@@ -32,5 +33,5 @@ public class PutCarrierDto extends BaseEntity {
         this.carrierPlusDesiCost = carrierPlusDesiCost;
     }
 
-    private int carrierPlusDesiCost;
+
 }
